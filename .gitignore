@@ -7,3 +7,7 @@ Secrets.xcconfig
 *.xcconfig.local
 
 .DS_Store
+
+# draw.io backups
+.*.drawio.bkp
+.*.drawio.dtmp
