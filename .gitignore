@@ -11,3 +11,4 @@ Secrets.xcconfig
 # draw.io backups
 .*.drawio.bkp
 .*.drawio.dtmp
+.xcuserstate
