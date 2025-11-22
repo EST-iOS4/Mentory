@@ -12,6 +12,9 @@ struct OnboardingView: View {
     // MARK: model
     @ObservedObject var onboarding: Onboarding
     
+    // MARK: viewModel
+    @FocusState var isEditing: Bool // TextField에 포커스가 맞춰지면 true로 변경됨
+    
     init(_ onboarding: Onboarding) {
         self.onboarding = onboarding
     }
@@ -21,43 +24,17 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             // 타이틀
-            HStack {
-                Text("감정 케어 앱, Mentory")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.black)
-                    .padding(.top, 60)
-                    .padding(.leading, 30)
-                Spacer()
-            }
+            OnboardingHeader(
+                title: "감정 케어 앱, Mentory"
+            )
             
-            // 캐릭터 표시 영역
-            HStack(spacing: 40) {
-                // 구름이 캐릭터
-                VStack(spacing: 12) {
-                    Image("gureum")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 120, height: 120)
-                    
-                    Text("온화한 성격의 구름이")
-                        .font(.system(size: 14))
-                        .foregroundColor(.black)
-                }
-                
-                // 분석이 캐릭터
-                VStack(spacing: 12) {
-                    Image("bunsuk")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 120, height: 120)
-                    
-                    Text("냉철한 성격의 분석이")
-                        .font(.system(size: 14))
-                        .foregroundColor(.black)
-                }
-            }
-            .padding(.top, 40)
-            .padding(.bottom, 40)
+            // 캐릭터
+            CharacterGroup(
+                leftImage: "gureum",
+                leftLabel: "온화한 성격의 구름이",
+                rightImage: "bunsuk",
+                rightLabel: "냉철한 성격의 분석이"
+            )
             
             // 기능 설명 리스트
             VStack(alignment: .leading, spacing: 20) {
@@ -91,6 +68,7 @@ struct OnboardingView: View {
             
             // 닉네임 입력 필드
             TextField("이름(닉네임)을 적어주세요.", text: $onboarding.nameInput)
+                .focused($isEditing)
                 .padding()
                 .frame(height: 60)
                 .background(Color(white: 0.95))
@@ -121,6 +99,65 @@ struct OnboardingView: View {
             .padding(.bottom, 40)
         }
         .background(Color.white)
+    }
+}
+
+// MARK: component
+extension OnboardingView {
+    @ViewBuilder
+    func OnboardingHeader(title: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 32, weight: .bold))
+                .foregroundColor(.black)
+                .padding(.top, 60)
+                .padding(.leading, 30)
+            Spacer()
+        }
+    }
+}
+
+fileprivate struct CharacterGroup: View {
+    let leftImage: String
+    let leftLabel: String
+    let rightImage: String
+    let rightLabel: String
+    
+    init(leftImage: String, leftLabel: String, rightImage: String, rightLabel: String) {
+        self.leftImage = leftImage
+        self.leftLabel = leftLabel
+        self.rightImage = rightImage
+        self.rightLabel = rightLabel
+    }
+    
+    var body: some View {
+        HStack(spacing: 40) {
+            // 구름이 캐릭터
+            VStack(spacing: 12) {
+                Image(self.leftImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 120, height: 120)
+                
+                Text(self.leftLabel)
+                    .font(.system(size: 14))
+                    .foregroundColor(.black)
+            }
+            
+            // 분석이 캐릭터
+            VStack(spacing: 12) {
+                Image(self.rightImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 120, height: 120)
+                
+                Text(self.rightLabel)
+                    .font(.system(size: 14))
+                    .foregroundColor(.black)
+            }
+        }
+        .padding(.top, 40)
+        .padding(.bottom, 40)
     }
 }
 
