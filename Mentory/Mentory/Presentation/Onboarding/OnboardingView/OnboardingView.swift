@@ -64,6 +64,7 @@ struct OnboardingView: View {
             }
             .padding(.horizontal, 30)
             
+            // 공백
             Spacer()
             
             // 닉네임 입력 필드
