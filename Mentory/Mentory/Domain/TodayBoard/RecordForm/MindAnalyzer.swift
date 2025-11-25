@@ -187,9 +187,6 @@ final class MindAnalyzer: Sendable, ObservableObject {
 
             // 저장된 레코드 ID를 TodayBoard에 저장 (체크 상태 업데이트용)
             todayBoard.latestRecordId = recordData.id
-
-            // 저장 후 오늘의 레코드 다시 로드
-//            await todayBoard.loadTodayRecords()
         } catch {
             logger.error("레코드 저장 실패: \(error)")
         }

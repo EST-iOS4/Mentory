@@ -29,6 +29,7 @@ final class TodayBoard: Sendable, ObservableObject {
 
     @Published var todayString: String? = nil
     @Published var isFetchedTodayString: Bool = false
+    
     @Published var actionKeyWordItems: [(String, Bool)] = []
     @Published var latestRecordId: UUID? = nil // 가장 최근 저장된 레코드 ID (행동 추천 업데이트용)
     
