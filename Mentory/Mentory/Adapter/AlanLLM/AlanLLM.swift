@@ -44,7 +44,6 @@ struct AlanLLM: AlanLLMInterface {
             throw AlanLLM.Error.invalidURL
         }
         
-        logger.info("API 요청: \(url.absoluteString, privacy: .public)")
         
         do {
             let (data, response) = try await URLSession.shared.data(from: url)
