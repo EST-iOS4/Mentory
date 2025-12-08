@@ -60,8 +60,18 @@ final class TodayBoard: Sendable, ObservableObject {
     @Published var suggestions: [Suggestion] = []
     var recentSuggestionUpdate: MentoryDate? = nil
     func getSuggestionIndicator() -> String {
-        "2/3"
+        let totalCount = self.suggestions
+            .count
+        
+        let doneCount = self.suggestions
+            .filter { $0.isDone == true }
+            .count
+        
+        return "\(doneCount)/\(totalCount)"
     }
+
+    @Published var completedSuggestionsCount: Int = 0
+    @Published var earnedBadges: [BadgeType] = []
     
     
     // MARK: action
@@ -142,7 +152,7 @@ final class TodayBoard: Sendable, ObservableObject {
         self.recordForms = newRecordForms
     }
     
-    func loadSuggestions() async {
+    func loadSuggestions() async {        
         // capture
         let currentDate = self.currentDate
         
@@ -153,6 +163,7 @@ final class TodayBoard: Sendable, ObservableObject {
         let recentRecord: (any DailyRecordInterface)?
         do {
             recentRecord = try await mentoryDB.getRecentRecord()
+            logger.debug("최근일기가져오기")
         } catch {
             logger.error("\(#function) 실패: \(error)")
             return
@@ -181,6 +192,7 @@ final class TodayBoard: Sendable, ObservableObject {
                 isDone: $0.isDone)
             }
         self.recentSuggestionUpdate = currentDate
+        logger.debug("추천행동가져오기\(suggestionDatas)")
     }
     
     func fetchUserRecordCoount() async {
@@ -202,55 +214,51 @@ final class TodayBoard: Sendable, ObservableObject {
         self.recordCount = recordCount
     }
 
-    
-    // TODO: etc
-    func handleWatchTodoCompletion(todoText: String, isCompleted: Bool) async {
+    func fetchEarnedBadges() async {
         // capture
-//        guard let recordId = latestRecordId else {
-//            logger.error("업데이트할 레코드 ID가 없습니다.")
-//            return
-//        }
-//
-//        // 투두 텍스트로 인덱스 찾기
-//        guard let index = actionKeyWordItems.firstIndex(where: { $0.0 == todoText }) else {
-//            logger.error("투두를 찾을 수 없음: \(todoText)")
-//            return
-//        }
-//
-//        // process
-//        // UI 상태 업데이트
-//        actionKeyWordItems[index].1 = isCompleted
-//        logger.debug("Watch로부터 투두 완료 상태 업데이트: \(todoText) = \(isCompleted)")
-//
-//        // records 배열에서도 업데이트 (인디케이터 반영용, 로직 개선 필요)
-//        if let recordIndex = records.firstIndex(where: { $0.id == recordId }) {
-//            let oldRecord = records[recordIndex]
-//            var newCompletionStatus = oldRecord.actionCompletionStatus
-//            newCompletionStatus[index] = isCompleted
-//
-//            let updatedRecord = RecordData(
-//                id: oldRecord.id,
-//                recordDate: oldRecord.recordDate,
-//                createdAt: oldRecord.createdAt,
-//                content: oldRecord.content,
-//                analyzedResult: oldRecord.analyzedResult,
-//                emotion: oldRecord.emotion,
-//                actionTexts: oldRecord.actionTexts,
-//                actionCompletionStatus: newCompletionStatus
-//            )
-//            records[recordIndex] = updatedRecord
-//            logger.debug("records 배열 업데이트 완료 - 인디케이터가 반영됩니다.")
-//        }
-//
-//        // DB 업데이트
-//        let mentoryDB = owner!.mentoryDB
-//        let completionStatus = actionKeyWordItems.map { $0.1 }
-//
-//        do {
-//            try await mentoryDB.updateActionCompletion(recordId: recordId, completionStatus: completionStatus)
-//            logger.debug("Watch 투두 완료 상태가 DB에 저장되었습니다.")
-//        } catch {
-//            logger.error("Watch 투두 완료 상태 DB 저장 실패: \(error)")
-//        }
+        let mentoryiOS = self.owner!
+        let mentoryDB = mentoryiOS.mentoryDB
+
+        // process
+        let completedCount: Int
+        do {
+            async let count = try await mentoryDB.getCompletedSuggestionsCount()
+            completedCount = try await count
+        } catch {
+            logger.error("완료된 제안 개수 조회 실패: \(error)")
+            return
+        }
+
+        // mutate
+        self.completedSuggestionsCount = completedCount
+        self.earnedBadges = BadgeType.earnedBadges(completedCount: completedCount)
+        logger.debug("완료된 제안: \(completedCount)개, 획득한 뱃지: \(self.earnedBadges.count)개")
+    }
+
+
+    // MARK: - Watch Connectivity
+    func sendSuggestionsToWatch() async {
+        let todos = suggestions.map { $0.content }
+        let completionStatus = suggestions.map { $0.isDone }
+
+        await WatchConnectivityManager.shared.updateActionTodos(todos, completionStatus: completionStatus)
+        logger.debug("Suggestions를 Watch로 전송: \(todos.count)개")
+    }
+
+    func handleWatchTodoCompletion(todoText: String, isCompleted: Bool) async {
+        // todoText로 해당 Suggestion 찾기
+        guard let suggestion = suggestions.first(where: { $0.content == todoText }) else {
+            logger.error("Watch로부터 받은 투두를 찾을 수 없음: \(todoText)")
+            return
+        }
+
+        // UI 상태 업데이트
+        suggestion.isDone = isCompleted
+        logger.debug("Watch로부터 투두 완료 상태 업데이트: \(todoText) = \(isCompleted)")
+
+        // TODO: MentoryDB에 저장하는 로직 구현 필요
+        // let mentoryiOS = owner!
+        // let mentoryDB = mentoryiOS.mentoryDB
+        // try await mentoryDB.updateSuggestionCompletion(...)
     }
 }

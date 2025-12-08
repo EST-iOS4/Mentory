@@ -236,7 +236,7 @@ public actor MentoryDatabase: Sendable {
         }
     }
 
-    public func getRecentRecord() -> RecordData? {
+    public func getRecentRecord() -> DailyRecord? {
         let context = ModelContext(MentoryDatabase.container)
         let id = self.id
 
@@ -251,20 +251,79 @@ public actor MentoryDatabase: Sendable {
             }
 
             // createdAt 기준 최신 DailyRecordModel 찾기
-            guard let latest = db.records.max(by: { $0.createdAt < $1.createdAt }) else {
+            guard let latest = db.records.max(by: { $0.recordDate < $1.recordDate }) else {
                 logger.debug("getRecentRecord: DailyRecord가 존재하지 않아 nil 반환")
                 return nil
             }
 
             // DailyRecordModel → RecordData 변환
-            return latest.toData()
+            return DailyRecord(id: latest.id)
 
         } catch {
             logger.error("최근 DailyRecord 조회 중 오류 발생: \(error)")
             return nil
         }
     }
-    
+
+    public func getCompletedSuggestionsCount() -> Int {
+        let context = ModelContext(MentoryDatabase.container)
+        let id = self.id
+
+        let descriptor = FetchDescriptor<MentoryDBModel>(
+            predicate: #Predicate { $0.id == id }
+        )
+
+        do {
+            guard let db = try context.fetch(descriptor).first else {
+                logger.error("MentoryDB가 존재하지 않아 getCompletedSuggestionsCount에서 0 반환")
+                return 0
+            }
+
+            // 모든 DailyRecord의 완료된 Suggestion 개수 카운트
+            let completedCount = db.records.reduce(0) { total, record in
+                total + record.suggestions.filter { $0.status == true }.count
+            }
+
+            logger.debug("완료된 제안 개수: \(completedCount)")
+            return completedCount
+
+        } catch {
+            logger.error("완료된 제안 개수 조회 중 오류 발생: \(error)")
+            return 0
+        }
+    }
+
+    public func updateSuggestionStatus(targetId: UUID, isDone: Bool) {
+        let context = ModelContext(MentoryDatabase.container)
+        let id = self.id
+
+        let descriptor = FetchDescriptor<MentoryDBModel>(
+            predicate: #Predicate { $0.id == id }
+        )
+
+        do {
+            guard let db = try context.fetch(descriptor).first else {
+                logger.error("MentoryDB가 존재하지 않아 updateSuggestionStatus 실패")
+                return
+            }
+
+            // 모든 DailyRecord의 Suggestion 중에서 target이 일치하는 것 찾기
+            for record in db.records {
+                if let suggestion = record.suggestions.first(where: { $0.target == targetId }) {
+                    suggestion.status = isDone
+                    try context.save()
+                    logger.debug("Suggestion(target: \(targetId)) 상태 업데이트: \(isDone)")
+                    return
+                }
+            }
+
+            logger.warning("targetId \(targetId)에 해당하는 Suggestion을 찾지 못했습니다.")
+
+        } catch {
+            logger.error("Suggestion 상태 업데이트 중 오류 발생: \(error)")
+        }
+    }
+
     public func getRecord(ticketId: UUID) -> DailyRecord? {
         fatalError("구현 예정입니다.")
     }
